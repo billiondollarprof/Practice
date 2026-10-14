@@ -1,0 +1,277 @@
+<title>Kora Coffee Support</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Outfit:wght@500;600&display=swap">
+<style>
+/* Layout: one full-height column. Branded header, a chat card that fills the rest, quick-question chips above the input. */
+:root {
+  color-scheme: dark;
+  --bg: #081331;
+  --panel: #0e1e49;
+  --panel-2: #152a60;
+  --line: rgba(141, 182, 255, 0.2);
+  --fg: #eaf0ff;
+  --muted: #9db0dc;
+  --accent: #ffd23f;
+  --accent-ink: #1d1600;
+  --user: #2b6cf0;
+  --user-ink: #ffffff;
+  --note: #f1c76a;
+  --ok: #4fd39a;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+}
+.app { height: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mark { width: 44px; height: 44px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: 22px; flex: none; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.2; }
+.brand p { margin: 0; color: var(--muted); font-size: 13px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pill[data-state="live"] i { background: var(--ok); }
+.chat { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+#log { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 86%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.bot { align-self: flex-start; background: var(--panel-2); border-bottom-left-radius: 4px; }
+.msg.user { align-self: flex-end; background: var(--user); color: var(--user-ink); border-bottom-right-radius: 4px; }
+.msg.note { align-self: stretch; max-width: 100%; background: transparent; border: 1px dashed var(--note); color: var(--note); font-size: 14px; }
+.msg button { margin-top: 8px; }
+.typing { display: inline-flex; gap: 4px; padding: 4px 0; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: 0.15s; }
+.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: 0.7; } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 12px; }
+.chips button { font: inherit; font-size: 14px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.chips button:hover { border-color: var(--accent); }
+form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--bg); }
+input[type="text"] { flex: 1; min-width: 0; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+input[type="text"]::placeholder { color: var(--muted); }
+button { font: inherit; cursor: pointer; }
+.send { font-family: var(--font-display); font-weight: 500; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 0 20px; }
+.send:disabled, input:disabled { opacity: 0.6; cursor: not-allowed; }
+.small { font-size: 13px; color: var(--accent); background: transparent; border: 1px solid var(--accent); border-radius: 8px; padding: 4px 10px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.foot { margin: 0; font-size: 12px; color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+
+<main class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">K</div>
+      <div>
+        <h1>Kora Coffee</h1>
+        <p>Customer support. Demo business.</p>
+      </div>
+    </div>
+    <span class="pill" id="mode" data-state="wait"><i></i><span id="modetext">Connecting</span></span>
+  </header>
+
+  <section class="chat" aria-label="Support chat">
+    <div id="log" role="log" aria-live="polite"></div>
+    <div class="chips" id="chips">
+      <button type="button">Where is my order?</button>
+      <button type="button">What is your return policy?</button>
+      <button type="button">Do you deliver outside Port Harcourt?</button>
+      <button type="button" data-human="1">Talk to a person</button>
+    </div>
+    <form id="form" autocomplete="off">
+      <label class="sr" for="text">Your question</label>
+      <input type="text" id="text" placeholder="Ask about orders, delivery or returns" maxlength="500">
+      <button class="send" id="send" type="submit">Send</button>
+    </form>
+  </section>
+
+  <p class="foot">This is an AI assistant and it can get things wrong. Kora Coffee is a made-up business for testing.</p>
+</main>
+
+<script>
+/* To use Make instead of Claude: paste your Make webhook URL here and host this file on a normal website. */
+const WEBHOOK_URL = "";
+
+const CONTACT = "support@koracoffee.example";
+
+const KNOWLEDGE = `ABOUT
+Kora Coffee Roasters is an online coffee shop in Port Harcourt, Nigeria. We roast in small batches and sell whole beans, ground coffee and brewing gear.
+
+ORDERS AND DELIVERY
+- Orders placed before 2 pm WAT, Monday to Saturday, ship the same day.
+- Delivery takes 1 to 2 working days in Port Harcourt, 2 to 4 working days in Lagos and Abuja, and 3 to 7 working days everywhere else in Nigeria.
+- Delivery is free on orders above 30,000 naira. Below that it costs 2,500 naira in Port Harcourt and 4,500 naira elsewhere.
+- Every order gets a tracking link by email once it ships. If a customer cannot find it, ask for their order number and say the team will resend it.
+- We do not deliver outside Nigeria yet.
+
+RETURNS AND REFUNDS
+- Unopened bags can be returned within 7 days of delivery for a full refund.
+- Opened bags cannot be returned, but if the coffee is stale or wrong we replace it free. Ask the customer to send a photo of the bag and the roast date.
+- Refunds go back to the original payment method within 5 to 7 working days after we receive the return.
+
+PRODUCTS
+- Roasts: Niger Delta Dark, Jos Plateau Medium, and Kora House Blend. Bags come in 250 g and 1 kg.
+- Grind options at checkout: whole bean, espresso, moka pot, filter.
+- Beans stay fresh for about 6 weeks after the roast date printed on the bag.
+
+SUPPORT HOURS AND CONTACT
+- Support runs Monday to Saturday, 9 am to 5 pm WAT.
+- Email: support@koracoffee.example
+- Prices and stock can change, so for exact prices point customers to the shop page.`;
+
+const RULES = `You are the customer support assistant for Kora Coffee Roasters, a made-up demo business. Answer using only the facts below. Reply in plain text with no markdown symbols and no em dashes. Keep answers to 2 to 4 short sentences. Answer first, then stop. Do not start with "Great question" or end with an offer of more help. If the answer is not in the facts, say you do not have that detail and give the support email. If the customer asks about a specific order, you cannot look orders up, so ask them to email their order number to the support address. Never make up prices, dates, order statuses or policies. If the customer is upset, say sorry once, briefly, and tell them what happens next. Stay on topic about Kora Coffee. You are an AI, not a person.
+
+FACTS
+${KNOWLEDGE}`;
+
+const log = document.getElementById("log");
+const form = document.getElementById("form");
+const input = document.getElementById("text");
+const sendBtn = document.getElementById("send");
+const chips = document.getElementById("chips");
+const modeEl = document.getElementById("mode");
+const modeText = document.getElementById("modetext");
+
+const turns = [];
+let sample = null;
+let mode = "none";
+
+function addMessage(kind, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  d.textContent = text;
+  log.append(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+function addTyping() {
+  const d = document.createElement("div");
+  d.className = "msg bot";
+  d.innerHTML = '<span class="typing" aria-label="Typing"><i></i><i></i><i></i></span>';
+  log.append(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+function setBusy(b) {
+  input.disabled = b;
+  sendBtn.disabled = b;
+}
+
+function setMode() {
+  if (sample) { mode = "claude"; modeText.textContent = "Answered by Claude"; modeEl.dataset.state = "live"; }
+  else if (WEBHOOK_URL) { mode = "make"; modeText.textContent = "Answered through Make"; modeEl.dataset.state = "live"; }
+  else { mode = "none"; modeText.textContent = "Not connected"; modeEl.dataset.state = "wait"; }
+}
+
+const ready = (async () => {
+  try {
+    if (window.claude && window.claude.use) sample = await window.claude.use("sample");
+  } catch (e) { sample = null; }
+  setMode();
+})();
+
+const ERRORS = {
+  not_granted: "Claude access was declined for this page, so it cannot answer here. Reload and choose Allow when asked.",
+  rate_limited: "Too many questions in a short time. Wait a minute, then send your message again.",
+  session_expired: "Your Claude session expired. Sign in again, then send your message again.",
+  sampling_disabled: "Claude is not available for this account.",
+  refused: "That message could not be answered. Try asking in a different way.",
+  empty_completion: "No answer came back. Try rephrasing your question."
+};
+
+async function askClaude(text, bubble) {
+  const msgs = [{ role: "user", content: RULES }].concat(turns.slice(-10));
+  const res = await sample(msgs, {
+    cache: false,
+    modelTier: "quick",
+    onText: (u) => { bubble.textContent = u.text; log.scrollTop = log.scrollHeight; }
+  });
+  return res.text.trim();
+}
+
+async function askMake(text) {
+  const context = turns.slice(-7, -1).map((t) => (t.role === "user" ? "Visitor: " : "Assistant: ") + t.content).join("\n");
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 45000);
+  try {
+    const res = await fetch(WEBHOOK_URL, { method: "POST", body: new URLSearchParams({ message: text, history: context }), signal: ctl.signal });
+    const raw = await res.text();
+    let reply = raw;
+    try { const d = JSON.parse(raw); reply = d.reply || d.text || d.message || ""; } catch (e) {}
+    if (!res.ok || !reply.trim()) throw new Error("empty");
+    return reply.trim();
+  } finally { clearTimeout(timer); }
+}
+
+async function ask(raw) {
+  const text = raw.trim();
+  if (!text) return;
+  chips.hidden = true;
+  addMessage("user", text);
+  input.value = "";
+  turns.push({ role: "user", content: text });
+  setBusy(true);
+  let bubble = addTyping();
+  try {
+    await ready;
+    if (mode === "none") {
+      bubble.remove();
+      addMessage("note", "This chat is not connected yet. Open it in Claude, or paste a Make webhook URL into WEBHOOK_URL in the page code.");
+      turns.pop();
+      return;
+    }
+    const reply = mode === "claude" ? await askClaude(text, bubble) : await askMake(text);
+    bubble.className = "msg bot";
+    bubble.textContent = reply;
+    turns.push({ role: "assistant", content: reply });
+  } catch (e) {
+    bubble.remove();
+    turns.pop();
+    const msg = mode === "claude" ? (ERRORS[e && e.code] || "Something went wrong on the way to Claude. Send your message again.") : "No reply came back. Check that the Make scenario is switched on, then send your message again.";
+    addMessage("note", msg);
+  } finally {
+    setBusy(false);
+    log.scrollTop = log.scrollHeight;
+    input.focus();
+  }
+}
+
+function showHuman() {
+  chips.hidden = true;
+  addMessage("user", "Talk to a person");
+  const d = addMessage("bot", "Our team answers Monday to Saturday, 9 am to 5 pm WAT. Email " + CONTACT + " and include your order number if you have one.");
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "small";
+  b.textContent = "Copy email address";
+  b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(CONTACT); b.textContent = "Copied"; }
+    catch (e) { b.textContent = CONTACT; }
+  });
+  d.append(document.createElement("br"), b);
+  log.scrollTop = log.scrollHeight;
+}
+
+form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value); });
+chips.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.human) showHuman(); else ask(b.textContent);
+});
+
+addMessage("bot", "Hi, I'm the Kora Coffee support assistant. Ask me about orders, delivery, returns or our roasts.");
+</script>
